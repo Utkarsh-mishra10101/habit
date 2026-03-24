@@ -625,6 +625,8 @@
     <div class="panel-body" id="dayPanelBody"></div>
   </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
 <script>
 const GYM='__gym__', DAYS=30;
 const today=new Date(); today.setHours(0,0,0,0);
@@ -770,16 +772,47 @@ function streak(){
 
 function gymDays(){return getDates().filter(d=>gymEx.some(eid=>{const l=gymLogs[gk(eid,dk(d))];return l&&l.done;})).length;}
 
-function addTask(){
+async function addTask(){
   const name=document.getElementById('tName').value.trim();
   const icon=document.getElementById('tIcon').value;
   const pts=parseInt(document.getElementById('tPts').value)||10;
-  if(!name){document.getElementById('tName').focus();return;}
-  tasks.push({id:Date.now().toString(),name,icon,points:pts});
-  save();document.getElementById('tName').value='';renderAll();
+
+  if(!name){
+    document.getElementById('tName').focus();
+    return;
+  }
+
+  // 🔥 SAVE TO SUPABASE
+  const { error } = await supabaseClient
+    .from('tasks')
+    .insert([
+      {
+        name: name,
+        icon: icon,
+        points: pts
+      }
+    ])
+
+  if (error) {
+    console.error(error)
+    alert("Error saving task")
+    return
+  }
+
+  // ✅ KEEP YOUR EXISTING UI LOGIC
+  tasks.push({
+    id:Date.now().toString(),
+    name,
+    icon,
+    points:pts
+  });
+
+  save();
+  document.getElementById('tName').value='';
+  renderAll();
 }
 function delTask(id){if(!confirm('Remove this habit?'))return;tasks=tasks.filter(t=>t.id!==id);save();renderAll();}
-function togCheck(tid,d){const k=ck(tid,d);checks[k]=!checks[k];save();renderAll();}
+async function togCheck(tid,d){const k=ck(tid,d);checks[k]=!checks[k];save();renderAll();await supabaseClient.from('checks').upsert({id:k,checked:checks[k]});}
 
 function renderTable(){
   const wrap=document.getElementById('tableWrap');
@@ -1013,17 +1046,19 @@ function gymNav(dir){
 }
 function gymNavToday(){gymDate=dk(today);buildGymPanel();renderAll();}
 
-function logGym(eid,field,val){
+async function logGym(eid,field,val){
   const k=gk(eid,gymDate);
   if(!gymLogs[k])gymLogs[k]={};
   gymLogs[k][field]=val;
   save();renderAll();
+  await supabaseClient.from('gym_logs').upsert({id:k,...gymLogs[k]});
 }
-function togGymDone(eid){
+async function togGymDone(eid){
   const k=gk(eid,gymDate);
   if(!gymLogs[k])gymLogs[k]={};
   gymLogs[k].done=!gymLogs[k].done;
   save();buildGymPanel();renderAll();
+  await supabaseClient.from('gym_logs').upsert({id:k,...gymLogs[k]});
 }
 function removeEx(eid){gymEx=gymEx.filter(id=>id!==eid);save();buildGymPanel();renderAll();}
 function restoreEx(eid){
@@ -1033,7 +1068,7 @@ function restoreEx(eid){
   }
   save();buildGymPanel();renderAll();
 }
-function saveGymNote(d,v){notes[GYM+':'+d]=v;save();}
+async function saveGymNote(d,v){const k=GYM+':'+d;notes[k]=v;save();await supabaseClient.from('notes').upsert({id:k,content:v});}
 
 function openGymForDate(dateStr){
   gymDate=dateStr;
@@ -1087,7 +1122,7 @@ function addSub(tid){
 }
 function delSub(tid,sid){subtasks[tid]=(subtasks[tid]||[]).filter(s=>s.id!==sid);save();buildHabitPanel(tid);renderAll();}
 function togSubCheck(tid,sid,d){const k=sk(tid,sid,d);subchecks[k]=!subchecks[k];save();buildHabitPanel(tid);renderAll();}
-function saveNote(tid,v){notes[tid]=v;save();}
+async function saveNote(tid,v){notes[tid]=v;save();await supabaseClient.from('notes').upsert({id:tid,content:v});}
 
 function showView(v){
   document.getElementById('trackerView').style.display=v==='tracker'?'':'none';
@@ -1540,6 +1575,38 @@ function toggleMusic(){
     dots.querySelectorAll('.music-dot').forEach(d=>d.classList.add('paused'));
   }
 }
+function showToast(msg){
+  const toast=document.createElement('div');
+  toast.textContent=msg;
+  toast.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#d4685a;color:#fff;padding:10px 18px;font-size:12px;z-index:9999;border-radius:4px;';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),4000);
+}
+
+async function loadTasksFromDB() {
+  // Load tasks
+  const { data: tasksData, error: tasksError } = await supabaseClient.from('tasks').select('*');
+  if (tasksError) { showToast('⚠️ DB error: ' + tasksError.message); return; }
+  tasks = tasksData.map(task => ({ id: task.id, name: task.name, icon: task.icon, points: task.points }));
+
+  // Load checks
+  const { data: checksData } = await supabaseClient.from('checks').select('*');
+  if (checksData) checksData.forEach(r => { checks[r.id] = r.checked; });
+
+  // Load notes
+  const { data: notesData } = await supabaseClient.from('notes').select('*');
+  if (notesData) notesData.forEach(r => { notes[r.id] = r.content; });
+
+  // Load gym logs
+  const { data: gymData } = await supabaseClient.from('gym_logs').select('*');
+  if (gymData) gymData.forEach(r => { const {id, ...rest} = r; gymLogs[id] = rest; });
+
+  save();
+  renderAll();
+}
+loadTasksFromDB()
+
 </script>
+
 </body>
 </html>
