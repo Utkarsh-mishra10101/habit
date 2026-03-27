@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✦ HabitForge — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+JP:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Nunito:wght@300;400;600;700&family=Nanum+Myeongjo:wght@400;700&family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">✦ HabitForge</div>
+    <div class="login-sub">daily quest log</div>
+
+    <!-- Error / Success Banners -->
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-msg" id="loginMsg"></div>
+
+    <!-- ── Sign In Form ─────────────────────────────── -->
+    <div id="signInForm">
+      <div class="login-title">▶ Sign In</div>
+      <div class="login-field">
+        <label for="siEmail">Email</label>
+        <input type="email" id="siEmail" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="login-field">
+        <label for="siPassword">Password</label>
+        <input type="password" id="siPassword" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <button class="login-btn" id="signInBtn" onclick="handleSignIn()">Sign In →</button>
+      <div class="login-toggle">
+        Forgot your password? <span onclick="showReset()">Reset it</span>
+      </div>
+      <div class="login-divider">or</div>
+      <div class="login-toggle">
+        No account yet? <span onclick="showSignUp()">Create one</span>
+      </div>
+    </div>
+
+    <!-- ── Sign Up Form ─────────────────────────────── -->
+    <div id="signUpForm" style="display:none;">
+      <div class="login-title">✦ Create Account</div>
+      <div class="login-field">
+        <label for="suEmail">Email</label>
+        <input type="email" id="suEmail" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="login-field">
+        <label for="suPassword">Password</label>
+        <input type="password" id="suPassword" placeholder="Min 6 characters" autocomplete="new-password" />
+      </div>
+      <div class="login-field">
+        <label for="suConfirm">Confirm Password</label>
+        <input type="password" id="suConfirm" placeholder="Repeat password" autocomplete="new-password" />
+      </div>
+      <button class="login-btn" id="signUpBtn" onclick="handleSignUp()">Create Account →</button>
+      <div class="login-toggle" style="margin-top:14px;">
+        Already have an account? <span onclick="showSignIn()">Sign in</span>
+      </div>
+    </div>
+
+    <!-- ── Password Reset Form ──────────────────────── -->
+    <div id="resetForm" style="display:none;">
+      <div class="login-title">↺ Reset Password</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.8;">
+        Enter your email address and we'll send you a link to reset your password.
+      </div>
+      <div class="login-field">
+        <label for="resetEmail">Email</label>
+        <input type="email" id="resetEmail" placeholder="you@example.com" />
+      </div>
+      <button class="login-btn" id="resetBtn" onclick="handleReset()">Send Reset Link →</button>
+      <div class="login-toggle" style="margin-top:14px;">
+        Remembered it? <span onclick="showSignIn()">Back to sign in</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script>
+// ── Redirect if already logged in ────────────────────────────
+(async () => {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) window.location.href = 'index.html';
+})();
+
+// ── UI Helpers ────────────────────────────────────────────────
+function showErr(msg) {
+  const el = document.getElementById('loginErr');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('loginMsg').style.display = 'none';
+}
+function showMsg(msg) {
+  const el = document.getElementById('loginMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('loginErr').style.display = 'none';
+}
+function clearAlerts() {
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('loginMsg').style.display = 'none';
+}
+
+function showSignIn() {
+  clearAlerts();
+  document.getElementById('signInForm').style.display = '';
+  document.getElementById('signUpForm').style.display = 'none';
+  document.getElementById('resetForm').style.display = 'none';
+}
+function showSignUp() {
+  clearAlerts();
+  document.getElementById('signInForm').style.display = 'none';
+  document.getElementById('signUpForm').style.display = '';
+  document.getElementById('resetForm').style.display = 'none';
+}
+function showReset() {
+  clearAlerts();
+  document.getElementById('signInForm').style.display = 'none';
+  document.getElementById('signUpForm').style.display = 'none';
+  document.getElementById('resetForm').style.display = '';
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  if (loading) btn.textContent = '…';
+  else btn.textContent = btn.dataset.label || btn.textContent;
+}
+
+// ── Sign In ───────────────────────────────────────────────────
+async function handleSignIn() {
+  clearAlerts();
+  const email    = document.getElementById('siEmail').value.trim();
+  const password = document.getElementById('siPassword').value;
+  if (!email || !password) { showErr('Please fill in all fields.'); return; }
+
+  const btn = document.getElementById('signInBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    showErr(error.message);
+    btn.disabled = false; btn.textContent = 'Sign In →';
+  } else {
+    btn.textContent = '✓ Success!';
+    setTimeout(() => window.location.href = 'index.html', 500);
+  }
+}
+
+// ── Sign Up ───────────────────────────────────────────────────
+async function handleSignUp() {
+  clearAlerts();
+  const email    = document.getElementById('suEmail').value.trim();
+  const password = document.getElementById('suPassword').value;
+  const confirm  = document.getElementById('suConfirm').value;
+  if (!email || !password) { showErr('Please fill in all fields.'); return; }
+  if (password.length < 6) { showErr('Password must be at least 6 characters.'); return; }
+  if (password !== confirm) { showErr('Passwords do not match.'); return; }
+
+  const btn = document.getElementById('signUpBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) {
+    showErr(error.message);
+    btn.disabled = false; btn.textContent = 'Create Account →';
+  } else {
+    showMsg('✓ Account created! Check your email to confirm, then sign in.');
+    btn.disabled = false; btn.textContent = 'Create Account →';
+    setTimeout(() => showSignIn(), 3000);
+  }
+}
+
+// ── Password Reset ────────────────────────────────────────────
+async function handleReset() {
+  clearAlerts();
+  const email = document.getElementById('resetEmail').value.trim();
+  if (!email) { showErr('Please enter your email.'); return; }
+
+  const btn = document.getElementById('resetBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/index.html'
+  });
+  if (error) {
+    showErr(error.message);
+    btn.disabled = false; btn.textContent = 'Send Reset Link →';
+  } else {
+    showMsg('✓ Reset link sent! Check your inbox.');
+    btn.disabled = false; btn.textContent = 'Send Reset Link →';
+  }
+}
+
+// ── Enter key support ─────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('signInForm').style.display !== 'none') handleSignIn();
+  else if (document.getElementById('signUpForm').style.display !== 'none') handleSignUp();
+  else if (document.getElementById('resetForm').style.display !== 'none') handleReset();
+});
+</script>
+</body>
+</html>

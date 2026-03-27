@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✦ HabitForge — Daily Quest Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+JP:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Nunito:wght@300;400;600;700&family=Nanum+Myeongjo:wght@400;700&family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════
+     HEADER
+     ════════════════════════════════════════════════ -->
+<div class="header">
+  <div style="display:flex;flex-direction:column;">
+    <div class="logo">✦ HabitForge</div>
+    <div class="logo-sub">daily quest log</div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('tracker')">▶ Tracker</button>
+    <button class="nav-tab" onclick="showView('monthly')">◈ Monthly</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;">
+    <!-- Music Player -->
+    <div class="music-player">
+      <button class="music-btn" id="musicBtn" onclick="toggleMusic()" title="Toggle music">♪</button>
+      <div>
+        <div class="music-title" id="musicTitle">village theme</div>
+        <div class="music-dots" id="musicDots">
+          <div class="music-dot paused"></div>
+          <div class="music-dot paused"></div>
+          <div class="music-dot paused"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme Picker -->
+    <button onclick="openThemePicker()"
+      style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted);padding:5px 10px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all .15s;"
+      onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--muted)'">
+      <span>🎨</span><span style="font-size:9px;">Theme</span>
+    </button>
+
+    <!-- User Info + Logout -->
+    <div class="user-info">
+      <span class="user-email" id="userEmail">—</span>
+      <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+    </div>
+
+    <div class="month-display" id="curMonth">—</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     THEME PICKER MODAL
+     ════════════════════════════════════════════════ -->
+<div class="theme-overlay" id="themeOverlay" style="display:none;" onclick="closeThemePicker(event)">
+  <div class="theme-modal" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div class="theme-modal-title">✦ Choose Your World</div>
+      <button onclick="closeThemePicker()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted);width:28px;height:28px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+    <div class="theme-grid" id="themeGrid"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     MAIN
+     ════════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- Add Habit Card -->
+  <div class="add-task-card">
+    <div class="section-micro">Add new habit</div>
+    <div class="add-task-row">
+      <div class="field-group">
+        <div class="field-label">Name</div>
+        <input type="text" id="tName" placeholder="e.g. Walk 10,000 steps" />
+      </div>
+      <div class="field-group">
+        <div class="field-label">Icon</div>
+        <select id="tIcon">
+          <option value="🏃">🏃 Running</option>
+          <option value="📖">📖 Study</option>
+          <option value="💧">💧 Water</option>
+          <option value="🍎">🍎 Nutrition</option>
+          <option value="😴">😴 Sleep</option>
+          <option value="📵">📵 No social media</option>
+          <option value="🎵">🎵 Music</option>
+          <option value="✍️">✍️ Journal</option>
+          <option value="🧼">🧼 Grooming</option>
+          <option value="🧘">🧘 Meditation</option>
+          <option value="⭐">⭐ Custom</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Points</div>
+        <input type="number" id="tPts" value="10" min="1" max="100" />
+      </div>
+      <button class="btn btn-primary" onclick="addTask()">+ Add Habit</button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Today's Score</div><div class="stat-value c-purple" id="sToday">0%</div></div>
+    <div class="stat-card"><div class="stat-label">Month Avg</div><div class="stat-value c-green" id="sMonth">0%</div></div>
+    <div class="stat-card"><div class="stat-label">Streak</div><div class="stat-value c-amber" id="sStreak">0d</div></div>
+    <div class="stat-card"><div class="stat-label">Gym Days</div><div class="stat-value c-gym" id="sGym">0</div></div>
+    <div class="stat-card"><div class="stat-label">Habits</div><div class="stat-value" id="sHabits">0</div></div>
+  </div>
+
+  <!-- Welcome Banner (shown on first sign-in) -->
+  <div id="welcomeBanner" style="display:none;background:var(--accent-dim);border:1px solid var(--border2);padding:14px 18px;margin-bottom:18px;display:none;align-items:flex-start;gap:14px;">
+    <span style="font-size:26px;flex-shrink:0;">👋</span>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:600;color:var(--accent2);margin-bottom:4px;">Welcome to HabitForge!</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.7;">
+        We've added <strong style="color:var(--text);">10 popular habits</strong> to get you started — feel free to remove any you don't need or add your own.
+        Gym is always tracked separately via the <strong style="color:var(--gym);">Log Gym</strong> button. Click any date to journal about your day. Have fun! ✦
+      </div>
+    </div>
+    <button onclick="dismissWelcome()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;flex-shrink:0;line-height:1;">×</button>
+  </div>
+
+  <!-- ── Tracker View ─────────────────────────────── -->
+  <div id="trackerView">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;">Viewing month</label>
+      <select id="monthSelect" onchange="onMonthChange()" style="min-width:180px;font-size:13px;padding:7px 12px;background:var(--surface);border:1px solid var(--border2);color:var(--text);cursor:pointer;"></select>
+      <button class="btn btn-ghost btn-sm" onclick="jumpToCurrentMonth()">Current month</button>
+    </div>
+    <div class="table-wrap" id="tableWrap">
+      <div class="empty-state"><div class="ei">📋</div><p>Loading your habits…</p></div>
+    </div>
+  </div>
+
+  <!-- ── Monthly View ─────────────────────────────── -->
+  <div id="monthlyView" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <label style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;font-family:'Press Start 2P',monospace;">Month</label>
+      <select id="monthlyMonthSelect" onchange="onMonthlyMonthChange()" style="min-width:180px;font-size:12px;padding:7px 12px;background:var(--surface);border:1px solid var(--border2);color:var(--text);cursor:pointer;"></select>
+    </div>
+    <div class="stats-row" id="monthlyStats" style="margin-bottom:16px;"></div>
+    <div class="month-summary">
+      <h3 id="monthlyTitle">Monthly Breakdown</h3>
+      <div class="month-bars" id="monthBars"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ════════════════════════════════════════════════
+     HABIT SIDE PANEL
+     ════════════════════════════════════════════════ -->
+<div class="overlay" id="overlay" style="display:none;" onclick="closePanelOutside(event)">
+  <div class="side-panel" onclick="event.stopPropagation()">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span id="pIcon"></span>
+        <span id="pTitle"></span>
+        <span id="pGymBadge" style="display:none;" class="gym-badge">GYM</span>
+      </div>
+      <button class="close-btn" onclick="closePanelOutside()">×</button>
+    </div>
+    <div class="panel-body" id="pBody"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     DAY PANEL
+     ════════════════════════════════════════════════ -->
+<div class="overlay" id="dayOverlay" style="display:none;" onclick="closeDayPanel(event)">
+  <div class="side-panel" onclick="event.stopPropagation()">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span style="font-size:20px;">📅</span>
+        <span id="dayPanelTitle" style="margin-left:10px;"></span>
+      </div>
+      <button class="close-btn" onclick="closeDayPanel()">×</button>
+    </div>
+    <div class="panel-body" id="dayPanelBody"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     SCRIPTS
+     ════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
